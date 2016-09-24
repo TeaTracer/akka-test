@@ -33,6 +33,34 @@ object HelloWorld {
   val nRequests = 42
   val http = Http()
 
+  val JQApiUrlPropertiesCountry = "https://api.jqestate.ru/v1/properties/country"
+
+  val getPaginationQuery = { offset: Int, limit: Int => {
+    return JQApiUrlPropertiesCountry + s"?pagination[offset]=$offset&pagination[limit]=$limit"
+  }}
+
+  val getTotalFromResponse = (response) => {
+      val string = Unmarshal(response.entity).to[String] // get body string (will be json soon)
+      val doc: Json = parse(string).getOrElse(Json.Null)
+      val cursor: HCursor = doc.hcursor
+      cursor.downField("pagination").downField("total").as[Int]
+  }
+
+  val getTotal = () => {
+    val request = getPaginationQuery(0, 0)
+    val response = sendRequest(request)
+    getTotalFromResponse(response)
+  }
+
+  val getRequestsStrings = () => {
+    val total = getTotal()
+    val limit = 256 // max for this server
+    val n = total / limit + 1 // number of requests
+    val requests = {1 to n}.map( x => getPaginationQuery((x - 1) * limit, limit))
+    requests
+  }
+
+
   // server roots
   val route = get {
     pathSingleSlash {
@@ -43,8 +71,7 @@ object HelloWorld {
     pathPrefix(IntNumber) { i =>
       complete {
         Future {
-          Thread.sleep(5000) // sleep 5 sec (to test async)
-          s"$i"
+          jsonList(i).nospaces
         }
       }
     }
@@ -60,9 +87,9 @@ object HelloWorld {
   }}
 
   // request to route '/<i:int>' and get int in response
-  val testFetch = { i: Int => {
-    val request = RequestBuilding.Get(s"/$i")
-    testRequest(request).flatMap { response =>
+  val testFetch = { request: String => {
+    val requestGet = RequestBuilding.Get(request)
+    testRequest(requestGet).flatMap { response =>
       Unmarshal(response.entity).to[String] // get body string (will be json soon)
     }
   }}
