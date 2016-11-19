@@ -1,6 +1,7 @@
-# JQEstate Test App
+# Akka Test App
 
-This application run http server at localhost:8080 with routes ['/', '/<int>'], then send requests and parse responses.
+This application sent some https requests to REST API and parse responses.
+Use "akka-http", "akka-stream" and "circe" for parsing JSON.
 
 ## Usage
 
