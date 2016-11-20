@@ -1,7 +1,7 @@
 # Akka Test App
 
-This application sent some https requests to REST API and parse responses.
-Use "akka-http", "akka-stream" and "circe" for parsing JSON.
+This application sends some https requests to REST API and parses responses.
+It uses "akka-http", "akka-stream" and "circe" for parsing JSON.
 
 ## Usage
 
