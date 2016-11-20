@@ -19,23 +19,23 @@ import io.circe.syntax._
 object RemoteAPI {
   val clientPort = 443 // https
   val clientHost = "api.jqestate.ru"
-  /* remote url */
+/* remote url */
   val apiUrl = "https://api.jqestate.ru/v1/properties/country"
 
-  /* pagination query */
+/* pagination query */
   def pQuery(offset: Int, limit: Int): String = apiUrl + s"?pagination[offset]=$offset&pagination[limit]=$limit"
 
-  /* just one of pages to fetch common data */
+/* just one of pages to fetch common data */
   def onePage = pQuery(0, 0)
 }
 
 object AkkaTest {
-  // akka magic implicits
+/* akka magic implicits */
   implicit val system = ActorSystem("MagicActorSystem")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  /* https connection to REST API server */
+/* https connection to REST API server */
   lazy val testConnection = Http().outgoingConnectionHttps(RemoteAPI.clientHost, RemoteAPI.clientPort)
 
   def getRequest(request: String): HttpRequest = RequestBuilding.Get(request)
@@ -46,7 +46,7 @@ object AkkaTest {
     Source.single(request).via(testConnection).runWith(Sink.head)
   }
 
-  /* request first page and parse total number of pages */
+/* request first page and parse total number of pages */
  def paginationLength: Future[Int] = {
     val request: HttpRequest = getRequest(RemoteAPI.onePage)
 
@@ -62,7 +62,7 @@ object AkkaTest {
     val result: Future[Int] = resultDecoder flatMap ( x =>
         Future { x match {
           case cats.data.Xor.Right(i) => i
-          case j  => {println("get ", j); throw new Exception("Can't parse!")} }})
+          case j  => throw new Exception("Can't parse!") }})
 
     result
   }
@@ -76,7 +76,7 @@ object AkkaTest {
     response
   }
 
-/* prepare and send requests */
+/* prepare and send requests to REST API */
   def getRequestsStrings(n: Int): Future[List[String]] =  {
     val limit = 256 // elements per page
     val total: Future[Int] = paginationLength // total elements
@@ -89,21 +89,22 @@ object AkkaTest {
     requests
   }
 
+/* gather data from remote REST API */
+  def clientTest(testNumberOfRequests: Int) = getRequestsStrings(testNumberOfRequests).onComplete({
+    case Success(l) => {
+      l.foreach(request => {
+        fetchResponse(request).onComplete({
+          case Success(s) => println("Response: ", s slice (0, 42))
+          case Failure(e) => throw new Exception(e)
+        })
+      })
+    }
+    case Failure(e) => throw new Exception(e)
+  })
+
 /* start point */
   def main(args: Array[String]): Unit = {
     val testNumberOfRequests = 2
-    def doTest() = getRequestsStrings(testNumberOfRequests).onComplete({
-      case Success(l) => {
-        l.foreach(request => {
-          fetchResponse(request).onComplete({
-            case Success(s) => println("Response: ", s slice (0, 42))
-            case Failure(e) => throw new Exception(e)
-          })
-        })
-      }
-      case Failure(e) => throw new Exception(e)
-    })
-    doTest()
-    sys.exit(0)
+    clientTest(testNumberOfRequests)
   }
 }
