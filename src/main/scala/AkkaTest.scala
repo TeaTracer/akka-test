@@ -94,7 +94,9 @@ object AkkaTest {
     case Success(l) => {
       l.foreach(request => {
         fetchResponse(request).onComplete({
-          case Success(s) => println("Response: ", s slice (0, 42))
+          case Success(s) => {
+            println("Response: ", s slice (0, 42))
+            system.terminate() }
           case Failure(e) => throw new Exception(e)
         })
       })
